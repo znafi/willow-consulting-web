@@ -623,38 +623,111 @@ menuOv.addEventListener('click', e => {
 addEventListener('keydown', e => { if (e.key === 'Escape') { closeDrawer(); closeMenu(); } });
 
 /* ==================================================================
-   Scroll: native scroll, smoothed progress
+   Scroll: one gesture = one section.
+   Wheel / swipe / key input is captured; each gesture (however hard or
+   long) steps exactly one section, animated through the portal.
    ================================================================== */
-const SEG = 1.3;               // viewport heights of scroll per section
-const HOLD = .38;              // extra scroll at the end
+const SEG = 1.3;               // scroll distance per section, in viewport heights
+const HOLD = .02;
 let vh = innerHeight, unit = vh * SEG;
 let smoothY = 0, prevY = 0, wind = 1;
 function layoutTrack() { unit = vh * SEG; track.style.height = Math.round(unit * (N - 1) + vh * (1 + HOLD)) + 'px'; }
+const stopY = k => k <= 0 ? 0 : Math.round(k * unit) + 1;
+const curIndex = () => clamp(Math.round(scrollY / unit), 0, N - 1);
+const overlayOpen = () => !drawer.hidden || !menuOv.hidden;
 
-let scrollAnim = null;
-function goTo(k, instant) {
-  const target = Math.round(k * unit + (k ? 2 : 0));
+let scrollAnim = null, animating = false, animTarget = -1;
+function runSegments(segs, k) {
   if (scrollAnim) cancelAnimationFrame(scrollAnim.raf);
-  const from = scrollY, dist = target - from;
-  if (Math.abs(dist) < 2) return;
-  if (instant || reduced) { scrollTo(0, target); smoothY = target - Math.sign(dist) * Math.min(Math.abs(dist), unit * .5); return; }
-  const dur = clamp(Math.abs(dist) / unit * 900, 900, 2600);
-  const t0 = performance.now();
-  const step = now => {
-    const t = clamp((now - t0) / dur);
-    scrollTo(0, from + dist * easeIO(t));
-    if (t < 1) scrollAnim.raf = requestAnimationFrame(step); else scrollAnim = null;
+  animating = true; animTarget = k;
+  let i = 0, from = scrollY, t0 = performance.now();
+  const tick = now => {
+    const sg = segs[i], t = sg.dur ? clamp((now - t0) / sg.dur) : 1;
+    scrollTo(0, from + (sg.to - from) * easeIO(t));
+    if (t >= 1) { i++; from = sg.to; t0 = now; }
+    if (i < segs.length) scrollAnim.raf = requestAnimationFrame(tick);
+    else { scrollAnim = null; animating = false; animTarget = -1; }
   };
-  scrollAnim = { raf: requestAnimationFrame(step) };
+  scrollAnim = { raf: requestAnimationFrame(tick) };
 }
-const cancelScrollAnim = () => { if (scrollAnim) { cancelAnimationFrame(scrollAnim.raf); scrollAnim = null; } };
-addEventListener('wheel', cancelScrollAnim, { passive: true });
-addEventListener('touchstart', cancelScrollAnim, { passive: true });
+function goTo(k, instant) {
+  k = clamp(k, 0, N - 1);
+  const from = scrollY, to = stopY(k), dist = to - from;
+  if (Math.abs(dist) < 2) return;
+  if (instant) { if (scrollAnim) cancelAnimationFrame(scrollAnim.raf); scrollAnim = null; animating = false; scrollTo(0, to); smoothY = to - Math.sign(dist) * Math.min(Math.abs(dist), unit * .5); return; }
+  if (reduced) { runSegments([{ to, dur: 450 }], k); return; }
+  if (Math.abs(dist) <= unit * 1.2) {
+    /* one section: ease to the open portal, hold, then dive through it */
+    const lo = Math.floor(Math.min(from, to) / unit + 1e-4), pause = (lo + .61) * unit;
+    if ((pause - from) * (to - pause) > 0) {
+      const a = Math.abs(pause - from) / unit, b = Math.abs(to - pause) / unit;
+      runSegments([{ to: pause, dur: 560 + 700 * a }, { to: pause, dur: 260 }, { to, dur: 560 + 900 * b }], k);
+      return;
+    }
+  }
+  runSegments([{ to, dur: clamp(Math.abs(dist) / unit * 750, 900, 2600) }], k);
+}
+function step(dir) {
+  if (animating || overlayOpen() || !introDone) return;
+  goTo(curIndex() + dir);
+}
+
+/* wheel & trackpad: a gesture ends after a quiet gap; inertia tails are ignored */
+let lastWheel = 0, gestureUsed = false;
+addEventListener('wheel', e => {
+  if (e.ctrlKey || overlayOpen()) return;
+  e.preventDefault();
+  const now = performance.now();
+  const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
+  const a = Math.abs(d);
+  const gap = now - lastWheel; lastWheel = now;
+  if (gap > 200) gestureUsed = false;
+  if (Math.abs(e.deltaX) > a || a < 2) return;
+  if (gestureUsed) return;
+  gestureUsed = true;
+  step(d > 0 ? 1 : -1);
+}, { passive: false });
+
+/* touch: one swipe = one step, fired as soon as the swipe is clear */
+let ty0 = null, tx0 = 0, touchUsed = false;
+document.addEventListener('touchstart', e => {
+  if (overlayOpen() || e.touches.length > 1) { ty0 = null; return; }
+  ty0 = e.touches[0].clientY; tx0 = e.touches[0].clientX; touchUsed = false;
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (ty0 === null) return;
+  e.preventDefault();
+  const dy = e.touches[0].clientY - ty0, dx = e.touches[0].clientX - tx0;
+  if (!touchUsed && Math.abs(dy) > 36 && Math.abs(dy) > Math.abs(dx)) { touchUsed = true; step(dy < 0 ? 1 : -1); }
+}, { passive: false });
+document.addEventListener('touchend', () => { ty0 = null; }, { passive: true });
+
+/* keyboard */
+addEventListener('keydown', e => {
+  if (overlayOpen() || e.altKey || e.ctrlKey || e.metaKey) return;
+  const onButton = e.target.closest && e.target.closest('button,a');
+  const next = ['ArrowDown', 'PageDown'].includes(e.key) || (e.key === ' ' && !onButton && !e.shiftKey);
+  const prev = ['ArrowUp', 'PageUp'].includes(e.key) || (e.key === ' ' && !onButton && e.shiftKey);
+  if (next || prev) { e.preventDefault(); if (!e.repeat) step(next ? 1 : -1); }
+  else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); if (!animating && introDone) goTo(e.key === 'Home' ? 0 : N - 1); }
+});
+
+/* anything else that moves the page (resize, find-in-page…) settles back onto a section */
+let settleTimer = 0;
+addEventListener('scroll', () => {
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
+    if (animating || overlayOpen()) return;
+    const k = curIndex();
+    if (Math.abs(scrollY - stopY(k)) > 3 && Math.abs(scrollY - (document.documentElement.scrollHeight - innerHeight)) > 3) goTo(k);
+  }, 180);
+}, { passive: true });
+
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-go]');
   if (a && !menuOv.contains(a)) { e.preventDefault(); goTo(+a.dataset.go); }
 });
-portal.addEventListener('click', () => { if (exp.classList.contains('is-portal')) goTo(nextFor + 1); });
+portal.addEventListener('click', () => { if (!animating && exp.classList.contains('is-portal')) goTo(nextFor + 1); });
 
 /* ==================================================================
    Pointer tilt + custom cursor

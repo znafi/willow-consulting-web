@@ -22,7 +22,7 @@ Writes `Group 07_Biographies_2WEBPAGE.pdf` with one 1440×900 frame per section.
 ## How it works
 
 - Raw WebGL renders five procedurally modelled emblems (willow, globe, book, microphone, film reel) with soft clay lighting, rim light and drifting particles.
-- Native scroll drives a smoothed progress value; each section reads, recedes, opens a tilting rounded "portal" window (stencil-masked, pointer-tilted) onto the next section, and expands it to full screen.
+- One gesture = one section: a wheel spin, trackpad swipe (inertia included), touch swipe or arrow/space key steps exactly one section, however hard or long. Each step eases to a tilting rounded "portal" window (stencil-masked, pointer-tilted) onto the next section, holds briefly, then dives through it to full screen.
 - Willow strands, book pages and film strip sway harder as you scroll faster.
 - Falls back to plain gradients without WebGL; respects reduced-motion; adapts render resolution if frames run slow.
 
