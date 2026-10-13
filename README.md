@@ -1,0 +1,31 @@
+# Willow Consulting Group — Biographies (Web Page Format)
+
+BUS 202 · Group Project Part 1, Deliverable 2. A scroll-driven 3D web page introducing Willow Consulting Group and its four members, prepared in response to the Old Strathcona Business Association RFP, *The Future of Whyte Ave*.
+
+## Open it
+
+Double-click `index.html` — it is one self-contained file (fonts embedded, no external requests, no libraries). Scroll, click the portal window, or use **Menu** to jump between sections. **Read full biography** opens each member's complete bio.
+
+## Edit content
+
+All text lives in the `STATES` array and `COMPANY_FULL` near the top of the `<script>` in `index.html`. Member bios are the members' own words; the company biography is a draft and should match the Document-format deliverable.
+
+## Export the submission PDF
+
+```
+pip install playwright pillow && python -m playwright install chromium
+python tools/export_pdf.py "Group 07"
+```
+
+Writes `Group 07_Biographies_2WEBPAGE.pdf` with one 1440×900 frame per section.
+
+## How it works
+
+- Raw WebGL renders five procedurally modelled emblems (willow, globe, book, microphone, film reel) with soft clay lighting, rim light and drifting particles.
+- Native scroll drives a smoothed progress value; each section reads, recedes, opens a tilting rounded "portal" window (stencil-masked, pointer-tilted) onto the next section, and expands it to full screen.
+- Willow strands, book pages and film strip sway harder as you scroll faster.
+- Falls back to plain gradients without WebGL; respects reduced-motion; adapts render resolution if frames run slow.
+
+Fonts: League Gothic and Inter (SIL Open Font License, see `fonts/`).
+
+**Privacy:** this repo contains group members' biographies — keep it private unless everyone agrees to publish.

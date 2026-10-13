@@ -1,0 +1,4 @@
+*.pdf
+.frame_*.png
+__pycache__/
+.DS_Store
