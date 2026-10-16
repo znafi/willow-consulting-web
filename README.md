@@ -18,7 +18,7 @@ Source photos live in `photos/` (full photo, 4:5 portrait crop and square avatar
 python tools/embed_photos.py
 ```
 
-Each member's portrait shows in their section and at the top of their full biography; the group photo shows on the Willow section and in the company biography, captioned left to right.
+Each member's portrait is the hero of their section, rendered as a floating 3D photo card (pointer tilt, gloss, shadow, flies through the portal), with their emblem spinning live in the panel slot beside it. The group photo is the hero of the Willow section and tops the company biography, captioned left to right. Without WebGL the photos fall back to plain images in the panel.
 
 ## Export the submission PDF
 
@@ -31,7 +31,7 @@ Writes `Group 07_Biographies_2WEBPAGE.pdf` with one 1440×900 frame per section.
 
 ## How it works
 
-- Raw WebGL renders five procedurally modelled emblems (willow, globe, book, microphone, film reel) with soft clay lighting, rim light and drifting particles.
+- Raw WebGL renders the member photos as 3D cards plus five procedurally modelled emblems (willow, globe, book, microphone, film reel) with soft clay lighting, rim light and drifting particles.
 - One gesture = one section: a wheel spin, trackpad swipe (inertia included), touch swipe or arrow/space key steps exactly one section, however hard or long. Each step eases to a tilting rounded "portal" window (stencil-masked, pointer-tilted) onto the next section, holds briefly, then dives through it to full screen.
 - Willow strands, book pages and film strip sway harder as you scroll faster.
 - Falls back to plain gradients without WebGL; respects reduced-motion; adapts render resolution if frames run slow.
