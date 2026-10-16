@@ -10,6 +10,16 @@ Double-click `index.html` — it is one self-contained file (fonts embedded, no 
 
 All text lives in the `STATES` array and `COMPANY_FULL` near the top of the `<script>` in `index.html`. Member bios are the members' own words; the company biography is a draft and should match the Document-format deliverable.
 
+## Photos
+
+Source photos live in `photos/` (full photo, 4:5 portrait crop and square avatar per member, plus `team.jpg`). They are embedded into `index.html` so the page stays one self-contained file. After replacing a photo, run:
+
+```
+python tools/embed_photos.py
+```
+
+Each member's portrait shows in their section and at the top of their full biography; the group photo shows on the Willow section and in the company biography, captioned left to right.
+
 ## Export the submission PDF
 
 ```
